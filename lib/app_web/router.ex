@@ -6,7 +6,6 @@ defmodule AppWeb.Router do
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, {AppWeb.LayoutView, :root}
-    plug :protect_from_forgery
     plug :put_secure_browser_headers
   end
 
@@ -18,6 +17,32 @@ defmodule AppWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :index
+  end
+
+  scope "/lists", AppWeb do
+    pipe_through :browser
+
+    post "/", ListController, :create
+    get "/:name", ListController, :get
+    get "/", ListController, :list
+  end
+
+  scope "/lists/:list_name/tasks", AppWeb do
+    pipe_through :browser
+
+    post "/", TaskController, :create
+    get "/:task_id", TaskController, :get
+    get "/", TaskController, :list
+    delete "/:task_id", TaskController, :remove
+    put "/:task_id", TaskController, :update
+    post "/:task_id/mark", TaskController, :mark
+    delete "/:task_id/mark", TaskController, :unmark
+  end
+
+  scope "/lists/:from_list_name/swaps/tasks", AppWeb do
+    pipe_through :browser
+
+    put "/", SwapController, :create
   end
 
   # Other scopes may use custom stacks.
