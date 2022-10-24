@@ -31,7 +31,6 @@ defmodule AppWeb.Router do
     pipe_through :browser
 
     post "/", TaskController, :create
-    get "/:task_id", TaskController, :get
     get "/", TaskController, :list
     delete "/:task_id", TaskController, :remove
     put "/:task_id", TaskController, :update
@@ -39,7 +38,7 @@ defmodule AppWeb.Router do
     delete "/:task_id/mark", TaskController, :unmark
   end
 
-  scope "/lists/:from_list_name/swaps/tasks", AppWeb do
+  scope "/lists/:start_list/swaps/tasks", AppWeb do
     pipe_through :browser
 
     put "/", SwapController, :create

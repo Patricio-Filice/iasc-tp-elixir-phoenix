@@ -3,7 +3,8 @@ defmodule AppWeb.ListController do
 
   def create(conn, params) do
     %{ "name" => name } = params
-    json(conn, %{id: name})
+    App.ToDoList.Worker.create(name)
+    Plug.Conn.send_resp(conn, 204, "")
   end
 
   def get(conn, params) do
@@ -12,6 +13,10 @@ defmodule AppWeb.ListController do
   end
 
   def list(conn, _params) do
-    json(conn, [])
+    lists = App.ToDoList.Worker.all()
+    map = fn { name, _, _ } ->
+      %{ name: name  }
+    end
+    json(conn, Enum.map(lists, map))
   end
 end

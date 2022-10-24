@@ -5,6 +5,8 @@ defmodule App.Application do
 
   use Application
 
+  @to_do_list_registry :to_do_list_registry
+
   @impl true
   def start(_type, _args) do
     children = [
@@ -13,9 +15,16 @@ defmodule App.Application do
       # Start the PubSub system
       {Phoenix.PubSub, name: App.PubSub},
       # Start the Endpoint (http/https)
-      AppWeb.Endpoint
+      AppWeb.Endpoint,
       # Start a worker by calling: App.Worker.start_link(arg)
       # {App.Worker, arg}
+      App.ToDoList.Task.Supervisor,
+      App.ToDoList.Task.Agent,
+      %{
+        id: Registry,
+        start: { Registry, :start_link, [:unique, @to_do_list_registry] }
+      },
+      App.ToDoList.Worker
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
