@@ -2,7 +2,7 @@ defmodule AppWeb.Router do
   use AppWeb, :router
 
   pipeline :browser do
-    plug CORSPlug, origin: ["http://localhost", "http://localhost:3000", "localhost:4000", ~r{^http?://(.*\.)?foo\.com$}]
+    plug CORSPlug
     plug :accepts, ["html"]
     plug :fetch_session
     plug :fetch_live_flash
@@ -11,7 +11,7 @@ defmodule AppWeb.Router do
   end
 
   pipeline :api do
-    plug CORSPlug, origin: ["http://localhost", "http://localhost:3000", "localhost:4000", ~r{^http?://(.*\.)?foo\.com$}]
+    plug CORSPlug
     plug :accepts, ["json"]
   end
 
