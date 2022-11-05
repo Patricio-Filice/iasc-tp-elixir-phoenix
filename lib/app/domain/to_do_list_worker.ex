@@ -2,7 +2,7 @@
 defmodule App.ToDoList.Worker do
   use GenServer
 
-  @to_do_list_registry :to_do_list_registry
+  @to_do_list_registry App.ToDoList.Registry
 
   def start_link(init_arg) do
     GenServer.start_link(__MODULE__, init_arg, name: __MODULE__)
@@ -15,8 +15,8 @@ defmodule App.ToDoList.Worker do
 
   def where_is(list_name) do
     case Registry.lookup(@to_do_list_registry, list_name) do
-      [{ pid, _ }] -> pid
-      [] -> { :to_do_list_not_found, "The requested list couldn't be found" }
+      [] -> nil
+      todo_lists -> Enum.random(todo_lists)
     end
   end
 
@@ -29,11 +29,18 @@ defmodule App.ToDoList.Worker do
   end
 
   def call(name, message) do
-    GenServer.call(where_is(name), message)
+    try_reach(name, fn pid -> GenServer.call(pid, message) end)
   end
 
   def cast(name, message) do
-    GenServer.cast(where_is(name), message)
+    try_reach(name, fn pid -> GenServer.cast(pid, message) end)
+  end
+
+  defp try_reach(name, action) do
+    case where_is(name) do
+      { pid, _ } -> action.(pid)
+      _ -> { :to_do_list_not_found, %{ code: "LIST_NOT_FOUND", message: "La lista solicitada no pudo ser encontrada" } }
+    end
   end
 
   def child_spec() do

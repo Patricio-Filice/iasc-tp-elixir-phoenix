@@ -5,7 +5,8 @@ defmodule App.Application do
 
   use Application
 
-  @to_do_list_registry :to_do_list_registry
+  @to_do_list_registry App.ToDoList.Registry
+  @to_do_list_agent_registry App.ToDoList.Agent.Registry
 
   @impl true
   def start(_type, _args) do
@@ -19,11 +20,15 @@ defmodule App.Application do
       # Start a worker by calling: App.Worker.start_link(arg)
       # {App.Worker, arg}
       App.ToDoList.Task.Supervisor,
-      App.ToDoList.Task.Agent,
       %{
-        id: Registry,
-        start: { Registry, :start_link, [:unique, @to_do_list_registry] }
+        id: @to_do_list_registry,
+        start: { Registry, :start_link, [:duplicate, @to_do_list_registry] }
       },
+      %{
+        id: @to_do_list_agent_registry,
+        start: { Registry, :start_link, [:duplicate, @to_do_list_agent_registry] }
+      },
+      App.ToDoList.Agent.Supervisor,
       App.ToDoList.Worker
     ]
 

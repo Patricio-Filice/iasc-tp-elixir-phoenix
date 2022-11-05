@@ -3,14 +3,15 @@ defmodule App.ToDoList.Task.Worker do
 
   @unmarked_task :unchecked
   @marked_task :checked
-  @to_do_list_registry :to_do_list_registry
+  @to_do_list_registry App.ToDoList.Registry
 
   def start_link(name) do
-    GenServer.start_link(__MODULE__, { name }, name: via_tuple(name))
+    GenServer.start_link(__MODULE__, { name })
   end
 
   @impl true
   def init({ name }) do
+    Registry.register(@to_do_list_registry, name, App.ToDoList.Task.Worker)
     { :ok, { name } }
   end
 
@@ -37,16 +38,15 @@ defmodule App.ToDoList.Task.Worker do
 
   @impl true
   def handle_cast({ :remove_task, task_id }, { name }) do
-    new_tasks = Map.delete(App.ToDoList.Task.Agent.get(name), task_id)
-    App.ToDoList.Task.Agent.put(name, new_tasks)
+    new_tasks = Map.delete(get_tasks(name), task_id)
+    update_tasks(name, new_tasks)
     { :noreply, { name } }
   end
 
   @impl true
   def handle_cast({ :swap_task, to_list, task_id }, { name }) do
-    to_list_pid = App.ToDoList.Worker.where_is(to_list)
     on_found = fn (task) ->
-      GenServer.call(to_list_pid, { :add_task, task.mark, task.text })
+      App.ToDoList.Worker.call(to_list, { :add_task, task.mark, task.text })
       handle_cast({ :remove_task, task_id }, { name })
     end
     do_action_on_task(name, task_id, on_found)
@@ -61,7 +61,7 @@ defmodule App.ToDoList.Task.Worker do
 
   @impl true
   def handle_call(:list_tasks, _from, { name }) do
-    { :reply, App.ToDoList.Task.Agent.get(name), { name } }
+    { :reply, get_tasks(name), { name } }
   end
 
   def change_task_mark(task_id, mark, { name }) do
@@ -72,26 +72,35 @@ defmodule App.ToDoList.Task.Worker do
   end
 
   def put_task({ id, mark, text }, { name }) do
-    tasks_map = App.ToDoList.Task.Agent.get(name)
+    tasks_map = get_tasks(name)
     new_tasks = Map.put(tasks_map, id, %{ mark: mark, text: text })
-    App.ToDoList.Task.Agent.put(name, new_tasks)
+    update_tasks(name, new_tasks)
   end
 
   def do_action_on_task(name, id, on_found) do
-    tasks_map = App.ToDoList.Task.Agent.get(name)
+    tasks_map = get_tasks(name)
     task = Map.get(tasks_map, id)
     case task do
-      nil -> { :task_not_found, "The requested task couldn't be found" }
+      nil -> { :task_not_found, %{ code: "TASK_NOT_FOUND", message: "The requested task couldn't be found" } }
       _ ->  on_found.(task)
     end
   end
 
   def child_spec(name) do
     %{
-      id: __MODULE__,
+      id: name,
       start: { __MODULE__, :start_link, name }
     }
   end
 
-  defp via_tuple(name), do: { :via, Registry, { @to_do_list_registry, name } }
+  defp get_tasks(name) do
+    { agent_pid, _ } = Enum.random(Registry.lookup(App.ToDoList.Agent.Registry, App.ToDoList.Agent))
+    App.ToDoList.Agent.get(agent_pid, name)
+  end
+
+  defp update_tasks(name, tasks) do
+    agent_pids = Registry.lookup(App.ToDoList.Agent.Registry, App.ToDoList.Agent)
+    Enum.each(agent_pids, fn { agent_pid, _ } -> App.ToDoList.Agent.update(agent_pid, name, tasks) end)
+    :ok
+  end
 end
