@@ -73,7 +73,7 @@ defmodule App.ToDoList.Task.Worker do
 
   def put_task({ id, mark, text }, { name }) do
     tasks_map = get_tasks(name)
-    new_tasks = Map.put(tasks_map, id, %{ mark: mark, text: text })
+    new_tasks = Map.put(tasks_map, id, %{ mark: mark, text: text, lastModification: DateTime.utc_now() })
     update_tasks(name, new_tasks)
   end
 

@@ -11,7 +11,10 @@ defmodule App.Application do
   @impl true
   def start(_type, _args) do
     children = [
+      # Cluster supervisor
+      {Cluster.Supervisor, [topologies(), [name: App.ToDoList.Cluster.Supervisor]]},
       # Start the Telemetry supervisor
+      App.ToDoList.NodeObserver.Supervisor,
       AppWeb.Telemetry,
       # Start the PubSub system
       {Phoenix.PubSub, name: App.PubSub},
@@ -44,5 +47,13 @@ defmodule App.Application do
   def config_change(changed, _new, removed) do
     AppWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  defp topologies do
+    [
+      app: [
+        strategy: Cluster.Strategy.Gossip
+      ]
+    ]
   end
 end
