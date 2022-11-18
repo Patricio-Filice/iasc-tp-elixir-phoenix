@@ -1,4 +1,12 @@
-# App
+# IASC Notes
+
+## TP Grupal - IASC 2C2022
+### Grupo 1
+
+### Enunciado
+https://docs.google.com/document/d/1Oy7tNtCV3-BzthtaMwHOMLoghpMZj5JcvUuSoc4xyr0
+
+## App
 
 To start your Phoenix server:
 
@@ -9,7 +17,7 @@ Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
 Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
 
-## Learn more
+### Learn more
 
   * Official website: https://www.phoenixframework.org/
   * Guides: https://hexdocs.pm/phoenix/overview.html
