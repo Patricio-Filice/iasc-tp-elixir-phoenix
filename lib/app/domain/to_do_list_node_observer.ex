@@ -23,9 +23,11 @@ defmodule App.ToDoList.NodeObserver do
       %{node_affected: node},
       %{}
     )
+    IO.puts("node down")
     IO.puts(node)
+    App.ToDoList.Task.State.Tracer.dismiss(node)
     #set_members(HordeRegistry)
-    #set_members(HordeSupervisor)
+    set_members(App.ToDoList.Task.Supervisor)
 
     {:noreply, state}
   end
@@ -37,10 +39,18 @@ defmodule App.ToDoList.NodeObserver do
       %{node_affected: node},
       %{}
     )
+    IO.puts("node up")
     IO.puts(node)
+    App.ToDoList.Task.State.Tracer.handshake(node)
     #set_members(HordeRegistry)
-    #set_members(HordeSupervisor)
+    set_members(App.ToDoList.Task.Supervisor)
 
     {:noreply, state}
+  end
+
+  defp set_members(name) do
+    members = Enum.map([Node.self() | Node.list()], &{name, &1})
+
+    :ok = Horde.Cluster.set_members(name, members)
   end
 end

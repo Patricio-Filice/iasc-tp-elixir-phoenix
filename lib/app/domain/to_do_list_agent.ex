@@ -12,7 +12,7 @@ defmodule App.ToDoList.Agent do
           map
         end
       end
-      map = Enum.reduce(Registry.lookup(App.ToDoList.Agent.Registry, App.ToDoList.Agent), %{}, reducer)
+      map = Enum.reduce(App.ToDoList.Task.State.Tracer.get_agents_pids(), %{}, reducer)
       Registry.register(@to_do_list_agent_registry, App.ToDoList.Agent, init_arg)
       map
     end)
@@ -33,7 +33,30 @@ defmodule App.ToDoList.Agent do
     Agent.get(agent_pid, &Map.get(&1, key, %{}))
   end
 
+  def get(agent_pid, list_name, task_id) do
+    get_task = fn am ->
+      Map.get(Map.get(am, list_name, %{}), task_id)
+    end
+    Agent.get(agent_pid, get_task)
+  end
+
   def update(agent_pid, key, value) do
     Agent.update(agent_pid, &Map.put(&1, key, value))
+  end
+
+  def update(agent_pid, list_name, task_id, task) do
+    put_task = fn am ->
+      list_map = Map.get(am, list_name, %{})
+      Map.put(am, list_name, Map.put(list_map, task_id, task))
+    end
+    Agent.update(agent_pid, put_task)
+  end
+
+  def delete(agent_pid, list_name, task_id) do
+    put_task = fn am ->
+      list_map = Map.get(am, list_name, %{})
+      Map.put(am, list_name, Map.delete(list_map, task_id))
+    end
+    Agent.update(agent_pid, put_task)
   end
 end

@@ -38,8 +38,8 @@ defmodule App.ToDoList.Task.Worker do
 
   @impl true
   def handle_cast({ :remove_task, task_id }, { name }) do
-    new_tasks = Map.delete(get_tasks(name), task_id)
-    update_tasks(name, new_tasks)
+    agent_pids = App.ToDoList.Task.State.Tracer.get_agents_pids()
+    Enum.each(agent_pids, fn { agent_pid, _ } -> App.ToDoList.Agent.delete(agent_pid, name, task_id) end)
     { :noreply, { name } }
   end
 
@@ -72,9 +72,9 @@ defmodule App.ToDoList.Task.Worker do
   end
 
   def put_task({ id, mark, text }, { name }) do
-    tasks_map = get_tasks(name)
-    new_tasks = Map.put(tasks_map, id, %{ mark: mark, text: text, lastModification: DateTime.utc_now() })
-    update_tasks(name, new_tasks)
+    new_task = %{ mark: mark, text: text, lastModification: DateTime.utc_now() }
+    agent_pids = App.ToDoList.Task.State.Tracer.get_agents_pids()
+    Enum.each(agent_pids, fn { agent_pid, _ } -> App.ToDoList.Agent.update(agent_pid, name, id, new_task) end)
   end
 
   def do_action_on_task(name, id, on_found) do
@@ -94,13 +94,7 @@ defmodule App.ToDoList.Task.Worker do
   end
 
   defp get_tasks(name) do
-    { agent_pid, _ } = Enum.random(Registry.lookup(App.ToDoList.Agent.Registry, App.ToDoList.Agent))
+    { agent_pid, _ } = App.ToDoList.Task.State.Tracer.get_any_local_agent_pid()
     App.ToDoList.Agent.get(agent_pid, name)
-  end
-
-  defp update_tasks(name, tasks) do
-    agent_pids = Registry.lookup(App.ToDoList.Agent.Registry, App.ToDoList.Agent)
-    Enum.each(agent_pids, fn { agent_pid, _ } -> App.ToDoList.Agent.update(agent_pid, name, tasks) end)
-    :ok
   end
 end

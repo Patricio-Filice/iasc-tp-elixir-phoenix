@@ -11,18 +11,6 @@ defmodule App.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      # Cluster supervisor
-      {Cluster.Supervisor, [topologies(), [name: App.ToDoList.Cluster.Supervisor]]},
-      # Start the Telemetry supervisor
-      App.ToDoList.NodeObserver.Supervisor,
-      AppWeb.Telemetry,
-      # Start the PubSub system
-      {Phoenix.PubSub, name: App.PubSub},
-      # Start the Endpoint (http/https)
-      AppWeb.Endpoint,
-      # Start a worker by calling: App.Worker.start_link(arg)
-      # {App.Worker, arg}
-      App.ToDoList.Task.Supervisor,
       %{
         id: @to_do_list_registry,
         start: { Registry, :start_link, [:duplicate, @to_do_list_registry] }
@@ -31,9 +19,21 @@ defmodule App.Application do
         id: @to_do_list_agent_registry,
         start: { Registry, :start_link, [:duplicate, @to_do_list_agent_registry] }
       },
+      {App.ToDoList.Node.Agent, :tasks_states},
+      App.ToDoList.Task.State.Tracer,
+      # Start the Telemetry supervisor
+      App.ToDoList.NodeObserver.Supervisor,
+      AppWeb.Telemetry,
+      # Start the PubSub system
+      {Phoenix.PubSub, name: App.PubSub},
+      # Start the Endpoint (http/https)
+      AppWeb.Endpoint,
+      App.ToDoList.Task.Supervisor,
       App.ToDoList.Agent.Supervisor,
-      App.ToDoList.Worker
-    ]
+      App.ToDoList.Worker,
+      # Cluster supervisor
+      {Cluster.Supervisor, [topologies(), [name: App.ToDoList.Cluster.Supervisor]]}
+      ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
