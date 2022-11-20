@@ -5,7 +5,7 @@ defmodule App.ToDoList.Agent do
 
   def start_link(init_arg) do
     Agent.start_link(fn ->
-      reducer = fn { agent_pid, _ }, map ->
+      reducer = fn agent_pid, map ->
         if (map == %{}) do
           App.ToDoList.Agent.get(agent_pid)
         else
@@ -38,6 +38,10 @@ defmodule App.ToDoList.Agent do
       Map.get(Map.get(am, list_name, %{}), task_id)
     end
     Agent.get(agent_pid, get_task)
+  end
+
+  def update(agent_pid, value) do
+    Agent.update(agent_pid, fn _ -> value end)
   end
 
   def update(agent_pid, key, value) do

@@ -4,6 +4,8 @@ defmodule App.ToDoList.Task.Worker do
   @unmarked_task :unchecked
   @marked_task :checked
   @to_do_list_registry App.ToDoList.Registry
+  @deleted_tasks_cache :deleted_tasks
+  @deleted_tasks_cache_ttl 86400000 # A full day
 
   def start_link(name) do
     GenServer.start_link(__MODULE__, { name })
@@ -39,7 +41,8 @@ defmodule App.ToDoList.Task.Worker do
   @impl true
   def handle_cast({ :remove_task, task_id }, { name }) do
     agent_pids = App.ToDoList.Task.State.Tracer.get_agents_pids()
-    Enum.each(agent_pids, fn { agent_pid, _ } -> App.ToDoList.Agent.delete(agent_pid, name, task_id) end)
+    Enum.each(agent_pids, fn agent_pid -> App.ToDoList.Agent.delete(agent_pid, name, task_id) end)
+    Cachex.put(@deleted_tasks_cache, task_id, DateTime.utc_now(), ttl: @deleted_tasks_cache_ttl)
     { :noreply, { name } }
   end
 
@@ -74,7 +77,7 @@ defmodule App.ToDoList.Task.Worker do
   def put_task({ id, mark, text }, { name }) do
     new_task = %{ mark: mark, text: text, lastModification: DateTime.utc_now() }
     agent_pids = App.ToDoList.Task.State.Tracer.get_agents_pids()
-    Enum.each(agent_pids, fn { agent_pid, _ } -> App.ToDoList.Agent.update(agent_pid, name, id, new_task) end)
+    Enum.each(agent_pids, fn agent_pid -> App.ToDoList.Agent.update(agent_pid, name, id, new_task) end)
   end
 
   def do_action_on_task(name, id, on_found) do
@@ -94,7 +97,7 @@ defmodule App.ToDoList.Task.Worker do
   end
 
   defp get_tasks(name) do
-    { agent_pid, _ } = App.ToDoList.Task.State.Tracer.get_any_local_agent_pid()
+    agent_pid = App.ToDoList.Task.State.Tracer.get_any_local_agent_pid()
     App.ToDoList.Agent.get(agent_pid, name)
   end
 end

@@ -29,10 +29,11 @@ defmodule App.Application do
       # Start the Endpoint (http/https)
       AppWeb.Endpoint,
       App.ToDoList.Task.Supervisor,
-      App.ToDoList.Agent.Supervisor,
       App.ToDoList.Worker,
       # Cluster supervisor
-      {Cluster.Supervisor, [topologies(), [name: App.ToDoList.Cluster.Supervisor]]}
+      {Cluster.Supervisor, [topologies(), [name: App.ToDoList.Cluster.Supervisor]]},
+      App.ToDoList.Agent.Supervisor,
+      {Cachex, name: :deleted_tasks}
       ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

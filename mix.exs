@@ -48,7 +48,8 @@ defmodule App.MixProject do
       { :uuid, "~> 1.1" },
       {:cors_plug, "~> 3.0"},
       {:libcluster, "~> 3.3"},
-      {:horde, "~> 0.8.7"}
+      {:horde, "~> 0.8.7"},
+      {:cachex, "~> 3.4"}
     ]
   end
 
