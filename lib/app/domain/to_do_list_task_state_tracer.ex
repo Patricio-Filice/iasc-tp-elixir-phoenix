@@ -74,8 +74,6 @@ defmodule App.ToDoList.Task.State.Tracer do
             local_to_do_list_task = Map.get(local_to_do_list_map, to_do_list_task_id)
             external_to_do_list_task = Map.get(external_to_do_list_map, to_do_list_task_id)
 
-
-
             action = cond do
               local_to_do_list_task == nil -> fn -> merge_with_no_local_task(to_do_list, to_do_list_task_id, external_to_do_list_task) end
               external_to_do_list_task != nil and external_to_do_list_task.lastModification > local_to_do_list_task.lastModification -> fn -> merge_with_external_task(to_do_list, to_do_list_task_id, external_to_do_list_task) end
