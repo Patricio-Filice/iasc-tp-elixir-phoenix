@@ -1,5 +1,4 @@
 defmodule App.ToDoList.Task.State.Tracer do
-  alias Hex.Netrc.Cache
   use GenServer
 
   @to_do_list_agent_registry App.ToDoList.Agent.Registry
@@ -76,7 +75,7 @@ defmodule App.ToDoList.Task.State.Tracer do
 
             action = cond do
               local_to_do_list_task == nil -> fn -> merge_with_no_local_task(to_do_list, to_do_list_task_id, external_to_do_list_task) end
-              external_to_do_list_task != nil and external_to_do_list_task.lastModification > local_to_do_list_task.lastModification -> fn -> merge_with_external_task(to_do_list, to_do_list_task_id, external_to_do_list_task) end
+              external_to_do_list_task != nil -> fn -> merge_with_external_task(to_do_list, to_do_list_task_id, local_to_do_list_task, external_to_do_list_task) end
 
               true -> fn -> :ok end
             end
@@ -105,14 +104,21 @@ defmodule App.ToDoList.Task.State.Tracer do
 
   defp merge_with_no_local_task(list_name, task_id, external_to_do_list_task) do
     removal_date = Cachex.get(@deleted_tasks_cache, task_id)
-    if external_to_do_list_task != nil and removal_date > external_to_do_list_task.lastModification do
+    if external_to_do_list_task != nil and removal_date > external_to_do_list_task.modificationDates.text and removal_date > external_to_do_list_task.modificationDates.mark do
       App.ToDoList.Worker.cast(list_name, { :remove_task, task_id })
+    else
+      App.ToDoList.Worker.cast(list_name, { :recover_task, task_id, external_to_do_list_task.mark, external_to_do_list_task.text, external_to_do_list_task.modificationDates })
     end
   end
 
-  defp merge_with_external_task(list_name, task_id, external_to_do_list_task) do
+  defp merge_with_external_task(list_name, task_id, local_to_do_list_task, external_to_do_list_task) do
+    if external_to_do_list_task.modificationsDate.text > local_to_do_list_task.modificationsDate.text do
+      App.ToDoList.Worker.cast(list_name, { :edit_task, task_id, external_to_do_list_task.text, external_to_do_list_task.modificationDates.text })
+    end
+
+    if external_to_do_list_task.modificationsDate.mark > local_to_do_list_task.modificationsDate.mark do
       mark_action = if external_to_do_list_task.mark == @marked_task, do: :mark_task, else: :unmark_task
-      App.ToDoList.Worker.cast(list_name, { :edit_task, task_id, external_to_do_list_task.text })
-      App.ToDoList.Worker.cast(list_name, { mark_action, task_id })
+      App.ToDoList.Worker.cast(list_name, { mark_action, task_id, external_to_do_list_task.modificationDates.mark })
+    end
   end
 end

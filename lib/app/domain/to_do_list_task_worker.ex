@@ -19,20 +19,41 @@ defmodule App.ToDoList.Task.Worker do
 
   @impl true
   def handle_cast({ :mark_task, task_id }, { name }) do
-    change_task_mark(task_id, @marked_task, { name })
+    change_task_mark(task_id, @marked_task, DateTime.utc_now(), { name })
+    { :noreply, { name } }
+  end
+
+  @impl true
+  def handle_cast({ :mark_task, task_id, modificationDate }, { name }) do
+    change_task_mark(task_id, @marked_task, modificationDate, { name })
     { :noreply, { name } }
   end
 
   @impl true
   def handle_cast({ :unmark_task, task_id }, { name }) do
-    change_task_mark(task_id, @unmarked_task, { name })
+    change_task_mark(task_id, @unmarked_task, DateTime.utc_now(), { name })
+    { :noreply, { name } }
+  end
+
+  @impl true
+  def handle_cast({ :unmark_task, task_id, modificationDate }, { name }) do
+    change_task_mark(task_id, @marked_task, modificationDate, { name })
     { :noreply, { name } }
   end
 
   @impl true
   def handle_cast({ :edit_task, task_id, text }, { name }) do
     on_found = fn task ->
-      put_task({ task_id, task.mark, text }, { name })
+      put_task({ task_id, task.mark, text, Map.put(task.modificationDates, :text, DateTime.utc_now()) }, { name })
+      { :noreply, { name } }
+    end
+    do_action_on_task(name, task_id, on_found)
+  end
+
+  @impl true
+  def handle_cast({ :edit_task, task_id, text, modificationDate }, { name }) do
+    on_found = fn task ->
+      put_task({ task_id, task.mark, text, Map.put(task.modificationDates, :text, modificationDate) }, { name })
       { :noreply, { name } }
     end
     do_action_on_task(name, task_id, on_found)
@@ -56,9 +77,16 @@ defmodule App.ToDoList.Task.Worker do
   end
 
   @impl true
+  def handle_cast({ :recover_task, id, mark, text, modificationDates }, { name }) do
+    put_task({ id, mark, text, modificationDates }, { name })
+    { :noreply, id, { name } }
+  end
+
+  @impl true
   def handle_call({ :add_task, mark, text }, _from, { name }) do
     id = UUID.uuid4()
-    put_task({ id, mark, text }, { name })
+    modificationDate = DateTime.utc_now()
+    put_task({ id, mark, text, %{ mark: modificationDate, text: modificationDate } }, { name })
     { :reply, id, { name } }
   end
 
@@ -67,15 +95,15 @@ defmodule App.ToDoList.Task.Worker do
     { :reply, get_tasks(name), { name } }
   end
 
-  def change_task_mark(task_id, mark, { name }) do
+  def change_task_mark(task_id, mark, modificationDate, { name }) do
     on_found = fn task ->
-      put_task({ task_id, mark, task.text }, { name })
+      put_task({ task_id, mark, task.text, Map.put(task.modificationDates, :task, modificationDate) }, { name })
     end
     do_action_on_task(name, task_id, on_found)
   end
 
-  def put_task({ id, mark, text }, { name }) do
-    new_task = %{ mark: mark, text: text, lastModification: DateTime.utc_now() }
+  def put_task({ id, mark, text, modificationDates }, { name }) do
+    new_task = %{ mark: mark, text: text, modificationDates: modificationDates }
     agent_pids = App.ToDoList.Task.State.Tracer.get_agents_pids()
     Enum.each(agent_pids, fn agent_pid -> App.ToDoList.Agent.update(agent_pid, name, id, new_task) end)
   end

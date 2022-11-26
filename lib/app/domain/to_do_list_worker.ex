@@ -51,7 +51,13 @@ defmodule App.ToDoList.Worker do
   end
 
   def cast(name, message) do
-    try_reach(name, fn pid -> GenServer.cast(pid, message) end)
+    on_found = fn pid ->
+      case message do
+        { :swap_task, end_list, task_id } -> try_reach(end_list, fn _ -> GenServer.cast(pid, { :swap_task, end_list, task_id }) end)
+        m -> GenServer.cast(pid, m)
+      end
+    end
+    try_reach(name, on_found)
   end
 
   defp try_reach(name, action) do
