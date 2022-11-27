@@ -7,4 +7,8 @@ RUN mix do deps.get, deps.compile
 
 EXPOSE 4000
 
-CMD ["mix", "phx.server"]
+ARG NODE_NAME
+ARG COOKIE_VALUE
+ARG PORT
+
+CMD PORT=${PORT} elixir --sname ${NODE_NAME} --cookie ${COOKIE_VALUE} -S mix phx.server
