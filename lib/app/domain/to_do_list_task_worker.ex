@@ -61,7 +61,7 @@ defmodule App.ToDoList.Task.Worker do
 
   @impl true
   def handle_cast({ :remove_task, task_id }, { name }) do
-    agent_pids = App.ToDoList.Task.State.Tracer.get_agents_pids()
+    agent_pids = App.ToDoList.Task.State.Manager.get_agents_pids()
     Enum.each(agent_pids, fn agent_pid -> App.ToDoList.Agent.delete(agent_pid, name, task_id) end)
     Cachex.put(@deleted_tasks_cache, task_id, DateTime.utc_now(), ttl: @deleted_tasks_cache_ttl)
     { :noreply, { name } }
@@ -104,7 +104,7 @@ defmodule App.ToDoList.Task.Worker do
 
   def put_task({ id, mark, text, modificationDates }, { name }) do
     new_task = %{ mark: mark, text: text, modificationDates: modificationDates }
-    agent_pids = App.ToDoList.Task.State.Tracer.get_agents_pids()
+    agent_pids = App.ToDoList.Task.State.Manager.get_agents_pids()
     Enum.each(agent_pids, fn agent_pid -> App.ToDoList.Agent.update(agent_pid, name, id, new_task) end)
   end
 
@@ -125,7 +125,7 @@ defmodule App.ToDoList.Task.Worker do
   end
 
   defp get_tasks(name) do
-    agent_pid = App.ToDoList.Task.State.Tracer.get_any_local_agent_pid()
+    agent_pid = App.ToDoList.Task.State.Manager.get_any_local_agent_pid()
     App.ToDoList.Agent.get(agent_pid, name)
   end
 end

@@ -1,4 +1,4 @@
-defmodule App.ToDoList.Task.State.Tracer do
+defmodule App.ToDoList.Task.State.Manager do
   use GenServer
 
   @to_do_list_agent_registry App.ToDoList.Agent.Registry

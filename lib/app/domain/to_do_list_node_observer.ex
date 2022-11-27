@@ -40,7 +40,7 @@ defmodule App.ToDoList.NodeObserver do
     )
     IO.puts("node up")
     IO.puts(node)
-    App.ToDoList.Task.State.Tracer.sync(node)
+    App.ToDoList.Task.State.Manager.sync(node)
     #set_members(HordeRegistry)
     set_members(App.ToDoList.Task.Supervisor)
 

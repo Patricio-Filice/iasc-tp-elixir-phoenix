@@ -12,7 +12,7 @@ defmodule App.ToDoList.Agent do
           map
         end
       end
-      map = Enum.reduce(App.ToDoList.Task.State.Tracer.get_agents_pids(), %{}, reducer)
+      map = Enum.reduce(App.ToDoList.Task.State.Manager.get_agents_pids(), %{}, reducer)
       Registry.register(@to_do_list_agent_registry, App.ToDoList.Agent, init_arg)
       map
     end)
