@@ -25,7 +25,6 @@ defmodule App.ToDoList.NodeObserver do
     )
     IO.puts("node down")
     IO.puts(node)
-    App.ToDoList.Task.State.Tracer.dismiss(node)
     #set_members(HordeRegistry)
     set_members(App.ToDoList.Task.Supervisor)
 

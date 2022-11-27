@@ -2,7 +2,6 @@ defmodule App.ToDoList.Task.State.Tracer do
   use GenServer
 
   @to_do_list_agent_registry App.ToDoList.Agent.Registry
-  @agent :tasks_states
   @deleted_tasks_cache :deleted_tasks
   @marked_task :checked
 
@@ -12,7 +11,6 @@ defmodule App.ToDoList.Task.State.Tracer do
 
   @impl true
   def init(_init_arg) do
-    App.ToDoList.Node.Agent.update(@agent, node(), Process.whereis(__MODULE__))
     { :ok, nil }
   end
 
@@ -28,11 +26,11 @@ defmodule App.ToDoList.Task.State.Tracer do
   end
 
   def get_agents_pids() do
-    task_state_tracers_pids = App.ToDoList.Node.Agent.get_values(@agent)
-    map = fn pid ->
-      GenServer.call(pid, :get_agents_pids)
+    nodes = [ Node.self() | Node.list() ]
+    map = fn node ->
+      GenServer.call({__MODULE__, :"#{node}"}, :get_agents_pids)
     end
-    Enum.flat_map(task_state_tracers_pids, map)
+    Enum.flat_map(nodes, map)
   end
 
   @impl true
@@ -55,7 +53,6 @@ defmodule App.ToDoList.Task.State.Tracer do
   end
 
   def sync(node) do
-    App.ToDoList.Node.Agent.update(@agent, node, GenServer.call({__MODULE__, :"#{node}"}, :accept_handshake ))
     local_state_map = App.ToDoList.Agent.get(get_any_local_agent_pid())
     external_state_map = App.ToDoList.Agent.get(GenServer.call({__MODULE__, :"#{node}"}, :get_any_agent_pid))
 
@@ -89,10 +86,6 @@ defmodule App.ToDoList.Task.State.Tracer do
     end
 
     sync_action.()
-  end
-
-  def dismiss(node) do
-    App.ToDoList.Node.Agent.delete(@agent, node)
   end
 
   def child_spec() do

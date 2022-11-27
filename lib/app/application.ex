@@ -19,7 +19,6 @@ defmodule App.Application do
         id: @to_do_list_agent_registry,
         start: { Registry, :start_link, [:duplicate, @to_do_list_agent_registry] }
       },
-      {App.ToDoList.Node.Agent, :tasks_states},
       App.ToDoList.Task.State.Tracer,
       # Start the Telemetry supervisor
       App.ToDoList.NodeObserver.Supervisor,
