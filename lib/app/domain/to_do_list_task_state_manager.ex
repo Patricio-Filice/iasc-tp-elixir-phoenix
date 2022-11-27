@@ -34,11 +34,6 @@ defmodule App.ToDoList.Task.State.Manager do
   end
 
   @impl true
-  def handle_call(:accept_handshake, _from, state) do
-    { :reply, self(), state }
-  end
-
-  @impl true
   def handle_call(:get_agents_pids, _from, state) do
     { :reply, get_local_agents_pids(), state }
   end

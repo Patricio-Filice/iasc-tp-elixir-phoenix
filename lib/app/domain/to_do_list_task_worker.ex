@@ -109,8 +109,8 @@ defmodule App.ToDoList.Task.Worker do
   end
 
   def do_action_on_task(name, id, on_found) do
-    tasks_map = get_tasks(name)
-    task = Map.get(tasks_map, id)
+    agent_pid = App.ToDoList.Task.State.Manager.get_any_local_agent_pid()
+    task = App.ToDoList.Agent.get(agent_pid, name, id)
     case task do
       nil -> { :task_not_found, %{ code: "TASK_NOT_FOUND", message: "The requested task couldn't be found" } }
       _ ->  on_found.(task)
