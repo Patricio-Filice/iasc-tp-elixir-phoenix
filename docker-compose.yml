@@ -1,0 +1,33 @@
+version: "3.7"
+
+services:
+  node-one:
+    build: .
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_NAME=nodeOne
+      - COOKIE_VALUE=cookie
+      - PORT=4000
+  node-two:
+    build: .
+    ports:
+      - "4001:4000"
+    environment:
+      - NODE_NAME=nodeTwo
+      - COOKIE_VALUE=cookie
+      - PORT=4000
+  node-three:
+    build: .
+    ports:
+      - "4002:4000"
+    environment:
+      - NODE_NAME=nodeThree
+      - COOKIE_VALUE=cookie
+      - PORT=4000
+  nginx:
+    image: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx:/etc/nginx/conf.d
