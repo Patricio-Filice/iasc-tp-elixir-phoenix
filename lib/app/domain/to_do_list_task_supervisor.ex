@@ -1,8 +1,12 @@
 defmodule App.ToDoList.Task.Supervisor do
-  use DynamicSupervisor
+  use Horde.DynamicSupervisor
 
-  def start_link(init_arg) do
-    DynamicSupervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
+  def start_link(_init_arg) do
+    opts = [
+      strategy: :one_for_one,
+      distribution_strategy: Horde.UniformDistribution
+    ]
+    Horde.DynamicSupervisor.start_link(__MODULE__, opts, name: __MODULE__)
   end
 
 
@@ -14,12 +18,18 @@ defmodule App.ToDoList.Task.Supervisor do
   end
 
   @impl true
-  def init(_init_arg) do
-    DynamicSupervisor.init(strategy: :one_for_one)
+  def init(init_arg) do
+    [members: members()]
+    |> Keyword.merge(init_arg)
+    |> Horde.DynamicSupervisor.init()
   end
 
   def start_child(name) do
     toDoListWorkerSpec = { App.ToDoList.Task.Worker, [name] }
-    DynamicSupervisor.start_child(__MODULE__, toDoListWorkerSpec)
+    Horde.DynamicSupervisor.start_child(__MODULE__, toDoListWorkerSpec)
+  end
+
+  defp members() do
+    Enum.map([Node.self() | Node.list()], &{__MODULE__, &1})
   end
 end

@@ -14,14 +14,32 @@ defmodule App.ToDoList.Worker do
   end
 
   def where_is(list_name) do
-    case Registry.lookup(@to_do_list_registry, list_name) do
+    worker = case Registry.lookup(@to_do_list_registry, list_name) do
       [] -> nil
       todo_lists -> Enum.random(todo_lists)
+    end
+
+    if (worker == nil) do
+      nodes = Node.list()
+      reducer = fn node, w ->
+        if (w == nil) do
+          GenServer.call({__MODULE__, :"#{node}"}, { :where_is, list_name })
+        else
+          w
+        end
+      end
+      Enum.reduce(nodes, worker, reducer)
+    else
+      worker
     end
   end
 
   def all() do
-    Registry.select(@to_do_list_registry, [{{:"$1", :"$2", :"$3"}, [], [{{:"$1", :"$2", :"$3"}}]}])
+    nodes = [ node() | Node.list() ]
+    map = fn node ->
+      GenServer.call({__MODULE__, :"#{node}"}, :all)
+    end
+    Enum.flat_map(nodes, map)
   end
 
   def create(name) do
@@ -33,7 +51,13 @@ defmodule App.ToDoList.Worker do
   end
 
   def cast(name, message) do
-    try_reach(name, fn pid -> GenServer.cast(pid, message) end)
+    on_found = fn pid ->
+      case message do
+        { :swap_task, end_list, task_id } -> try_reach(end_list, fn _ -> GenServer.cast(pid, { :swap_task, end_list, task_id }) end)
+        m -> GenServer.cast(pid, m)
+      end
+    end
+    try_reach(name, on_found)
   end
 
   defp try_reach(name, action) do
@@ -41,6 +65,19 @@ defmodule App.ToDoList.Worker do
       { pid, _ } -> action.(pid)
       _ -> { :to_do_list_not_found, %{ code: "LIST_NOT_FOUND", message: "La lista solicitada no pudo ser encontrada" } }
     end
+  end
+
+  @impl true
+  def handle_call({ :where_is, list_name }, _from, state) do
+    case Registry.lookup(@to_do_list_registry, list_name) do
+      [] -> { :reply, nil, state }
+      todo_lists -> { :reply, Enum.random(todo_lists), state }
+    end
+  end
+
+  @impl true
+  def handle_call(:all , _from, state) do
+    { :reply, Registry.select(@to_do_list_registry, [{{:"$1", :"$2", :"$3"}, [], [{{:"$1", :"$2", :"$3"}}]}]), state }
   end
 
   def child_spec() do

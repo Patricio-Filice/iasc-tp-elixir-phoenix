@@ -11,15 +11,6 @@ defmodule App.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      # Start the Telemetry supervisor
-      AppWeb.Telemetry,
-      # Start the PubSub system
-      {Phoenix.PubSub, name: App.PubSub},
-      # Start the Endpoint (http/https)
-      AppWeb.Endpoint,
-      # Start a worker by calling: App.Worker.start_link(arg)
-      # {App.Worker, arg}
-      App.ToDoList.Task.Supervisor,
       %{
         id: @to_do_list_registry,
         start: { Registry, :start_link, [:duplicate, @to_do_list_registry] }
@@ -28,9 +19,21 @@ defmodule App.Application do
         id: @to_do_list_agent_registry,
         start: { Registry, :start_link, [:duplicate, @to_do_list_agent_registry] }
       },
+      App.ToDoList.Task.State.Manager,
+      # Start the Telemetry supervisor
+      App.ToDoList.NodeObserver.Supervisor,
+      AppWeb.Telemetry,
+      # Start the PubSub system
+      {Phoenix.PubSub, name: App.PubSub},
+      # Start the Endpoint (http/https)
+      AppWeb.Endpoint,
+      App.ToDoList.Task.Supervisor,
+      App.ToDoList.Worker,
+      # Cluster supervisor
+      {Cluster.Supervisor, [topologies(), [name: App.ToDoList.Cluster.Supervisor]]},
       App.ToDoList.Agent.Supervisor,
-      App.ToDoList.Worker
-    ]
+      {Cachex, name: :deleted_tasks}
+      ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
@@ -44,5 +47,13 @@ defmodule App.Application do
   def config_change(changed, _new, removed) do
     AppWeb.Endpoint.config_change(changed, removed)
     :ok
+  end
+
+  defp topologies do
+    [
+      app: [
+        strategy: Cluster.Strategy.Gossip
+      ]
+    ]
   end
 end

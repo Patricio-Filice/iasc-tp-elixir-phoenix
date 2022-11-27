@@ -8,9 +8,9 @@ defmodule App.ToDoList.Agent.Supervisor do
   @impl true
   def init(_init_arg) do
     children = [
-      {App.ToDoList.Agent, [:zero]},
-      {App.ToDoList.Agent, [:one]},
-      {App.ToDoList.Agent, [:two]}
+      {App.ToDoList.Agent, :zero},
+      {App.ToDoList.Agent, :one},
+      {App.ToDoList.Agent, :two}
     ]
     Supervisor.init(children, strategy: :one_for_one)
   end

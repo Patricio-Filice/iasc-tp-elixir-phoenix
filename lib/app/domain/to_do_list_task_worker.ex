@@ -4,6 +4,8 @@ defmodule App.ToDoList.Task.Worker do
   @unmarked_task :unchecked
   @marked_task :checked
   @to_do_list_registry App.ToDoList.Registry
+  @deleted_tasks_cache :deleted_tasks
+  @deleted_tasks_cache_ttl 86400000 # A full day
 
   def start_link(name) do
     GenServer.start_link(__MODULE__, { name })
@@ -17,20 +19,41 @@ defmodule App.ToDoList.Task.Worker do
 
   @impl true
   def handle_cast({ :mark_task, task_id }, { name }) do
-    change_task_mark(task_id, @marked_task, { name })
+    change_task_mark(task_id, @marked_task, DateTime.utc_now(), { name })
+    { :noreply, { name } }
+  end
+
+  @impl true
+  def handle_cast({ :mark_task, task_id, modificationDate }, { name }) do
+    change_task_mark(task_id, @marked_task, modificationDate, { name })
     { :noreply, { name } }
   end
 
   @impl true
   def handle_cast({ :unmark_task, task_id }, { name }) do
-    change_task_mark(task_id, @unmarked_task, { name })
+    change_task_mark(task_id, @unmarked_task, DateTime.utc_now(), { name })
+    { :noreply, { name } }
+  end
+
+  @impl true
+  def handle_cast({ :unmark_task, task_id, modificationDate }, { name }) do
+    change_task_mark(task_id, @marked_task, modificationDate, { name })
     { :noreply, { name } }
   end
 
   @impl true
   def handle_cast({ :edit_task, task_id, text }, { name }) do
     on_found = fn task ->
-      put_task({ task_id, task.mark, text }, { name })
+      put_task({ task_id, task.mark, text, Map.put(task.modificationDates, :text, DateTime.utc_now()) }, { name })
+      { :noreply, { name } }
+    end
+    do_action_on_task(name, task_id, on_found)
+  end
+
+  @impl true
+  def handle_cast({ :edit_task, task_id, text, modificationDate }, { name }) do
+    on_found = fn task ->
+      put_task({ task_id, task.mark, text, Map.put(task.modificationDates, :text, modificationDate) }, { name })
       { :noreply, { name } }
     end
     do_action_on_task(name, task_id, on_found)
@@ -38,8 +61,9 @@ defmodule App.ToDoList.Task.Worker do
 
   @impl true
   def handle_cast({ :remove_task, task_id }, { name }) do
-    new_tasks = Map.delete(get_tasks(name), task_id)
-    update_tasks(name, new_tasks)
+    agent_pids = App.ToDoList.Task.State.Manager.get_agents_pids()
+    Enum.each(agent_pids, fn agent_pid -> App.ToDoList.Agent.delete(agent_pid, name, task_id) end)
+    Cachex.put(@deleted_tasks_cache, task_id, DateTime.utc_now(), ttl: @deleted_tasks_cache_ttl)
     { :noreply, { name } }
   end
 
@@ -53,9 +77,16 @@ defmodule App.ToDoList.Task.Worker do
   end
 
   @impl true
+  def handle_cast({ :recover_task, id, mark, text, modificationDates }, { name }) do
+    put_task({ id, mark, text, modificationDates }, { name })
+    { :noreply, id, { name } }
+  end
+
+  @impl true
   def handle_call({ :add_task, mark, text }, _from, { name }) do
     id = UUID.uuid4()
-    put_task({ id, mark, text }, { name })
+    modificationDate = DateTime.utc_now()
+    put_task({ id, mark, text, %{ mark: modificationDate, text: modificationDate } }, { name })
     { :reply, id, { name } }
   end
 
@@ -64,22 +95,22 @@ defmodule App.ToDoList.Task.Worker do
     { :reply, get_tasks(name), { name } }
   end
 
-  def change_task_mark(task_id, mark, { name }) do
+  def change_task_mark(task_id, mark, modificationDate, { name }) do
     on_found = fn task ->
-      put_task({ task_id, mark, task.text }, { name })
+      put_task({ task_id, mark, task.text, Map.put(task.modificationDates, :task, modificationDate) }, { name })
     end
     do_action_on_task(name, task_id, on_found)
   end
 
-  def put_task({ id, mark, text }, { name }) do
-    tasks_map = get_tasks(name)
-    new_tasks = Map.put(tasks_map, id, %{ mark: mark, text: text })
-    update_tasks(name, new_tasks)
+  def put_task({ id, mark, text, modificationDates }, { name }) do
+    new_task = %{ mark: mark, text: text, modificationDates: modificationDates }
+    agent_pids = App.ToDoList.Task.State.Manager.get_agents_pids()
+    Enum.each(agent_pids, fn agent_pid -> App.ToDoList.Agent.update(agent_pid, name, id, new_task) end)
   end
 
   def do_action_on_task(name, id, on_found) do
-    tasks_map = get_tasks(name)
-    task = Map.get(tasks_map, id)
+    agent_pid = App.ToDoList.Task.State.Manager.get_any_local_agent_pid()
+    task = App.ToDoList.Agent.get(agent_pid, name, id)
     case task do
       nil -> { :task_not_found, %{ code: "TASK_NOT_FOUND", message: "The requested task couldn't be found" } }
       _ ->  on_found.(task)
@@ -94,13 +125,7 @@ defmodule App.ToDoList.Task.Worker do
   end
 
   defp get_tasks(name) do
-    { agent_pid, _ } = Enum.random(Registry.lookup(App.ToDoList.Agent.Registry, App.ToDoList.Agent))
+    agent_pid = App.ToDoList.Task.State.Manager.get_any_local_agent_pid()
     App.ToDoList.Agent.get(agent_pid, name)
-  end
-
-  defp update_tasks(name, tasks) do
-    agent_pids = Registry.lookup(App.ToDoList.Agent.Registry, App.ToDoList.Agent)
-    Enum.each(agent_pids, fn { agent_pid, _ } -> App.ToDoList.Agent.update(agent_pid, name, tasks) end)
-    :ok
   end
 end
