@@ -100,11 +100,11 @@ defmodule App.ToDoList.Task.State.Manager do
   end
 
   defp merge_with_external_task(list_name, task_id, local_to_do_list_task, external_to_do_list_task) do
-    if external_to_do_list_task.modificationsDate.text > local_to_do_list_task.modificationsDate.text do
+    if external_to_do_list_task.modificationDates.text > local_to_do_list_task.modificationDates.text do
       App.ToDoList.Worker.cast(list_name, { :edit_task, task_id, external_to_do_list_task.text, external_to_do_list_task.modificationDates.text })
     end
 
-    if external_to_do_list_task.modificationsDate.mark > local_to_do_list_task.modificationsDate.mark do
+    if external_to_do_list_task.modificationDates.mark > local_to_do_list_task.modificationDates.mark do
       mark_action = if external_to_do_list_task.mark == @marked_task, do: :mark_task, else: :unmark_task
       App.ToDoList.Worker.cast(list_name, { mark_action, task_id, external_to_do_list_task.modificationDates.mark })
     end
