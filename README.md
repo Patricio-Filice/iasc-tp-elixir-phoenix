@@ -6,16 +6,25 @@
 ### Enunciado
 https://docs.google.com/document/d/1Oy7tNtCV3-BzthtaMwHOMLoghpMZj5JcvUuSoc4xyr0
 
+El link a la documentacion general de la aplicacion la pueden encontrar en el siguiente link:
+
+https://docs.google.com/document/d/1J1KQsm9-BTqRnmWivQgew6jYs8_CGe8PI8u6AOBXygM/edit
+
 ## App
 
-To start your Phoenix server:
+Para poder correr la aplicacion localmente (sin doker), luego de clonar el repositorio, se debe parar sobre la carpeta clonada y ejecutar el siguiente comando para instalar las dependencias:
 
-  * Install dependencies with `mix deps.get`
-  * Start Phoenix endpoint with `mix phx.server` or inside IEx with `iex -S mix phx.server`
+`mix deps.get`
 
-Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
+Luego de ello, podra correr los nodos que crea convenientes con el siguiente comando:
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
+iex --sname node1 --cookie cookie -S mix phx.server
+
+Indicando en el parametro --sname el nombre que desea asignarle a cada nodo y asignandole puertos distintos a cada uno. Para esto, se debe cambiar el puerto en el archivo '/config/dev.xes' o cambiando la variable de entoro 'PUERTO'.
+
+Una vez que tenga los nodos que crea necesario (con 2 nodos es suficiente para probar los escenarios), podra continuar con la puesta en marcha del frontend, para ello puede seguir con las instrucciones que se encuentran en la carpeta /frontend/readme.md o tambien en el siguiente repositorio:
+
+https://github.com/matiasfarran/IASCFront
 
 ### Learn more
 
