@@ -2,6 +2,8 @@ FROM elixir:1.14
 
 COPY . .
 
+RUN rm -rf frontend
+
 RUN mix local.hex --force && mix local.rebar --force
 RUN mix do deps.get, deps.compile
 
