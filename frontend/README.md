@@ -10,7 +10,7 @@ Se recomienda que se corran minimo 2 nodos y estos operen en los puertos 4000 y 
 
 Luego de tener los nodos corriendo se debe installar las dependencias del proyecto. Para realizar ese paso pararse en la carpeta principal y ejecutar el siguiente comando:
 
-npm install
+npm install --legacy-peer-deps
 
 Luego de instalar las dependencias se debe correr la aplicacion con la configuracion que se encuentra en el archivo .env, utilizando el siguiente comando:
 
