@@ -13,7 +13,7 @@ defmodule App.ToDoList.Task.Worker do
 
   @impl true
   def init({ name }) do
-    Registry.register(@to_do_list_registry, name, App.ToDoList.Task.Worker)
+    Registry.register(@to_do_list_registry, name, DateTime.utc_now())
     { :ok, { name } }
   end
 
@@ -112,7 +112,7 @@ defmodule App.ToDoList.Task.Worker do
     agent_pid = App.ToDoList.Task.State.Manager.get_any_local_agent_pid()
     task = App.ToDoList.Agent.get(agent_pid, name, id)
     case task do
-      nil -> { :task_not_found, %{ code: "TASK_NOT_FOUND", message: "The requested task couldn't be found" } }
+      nil -> { :task_not_found, %{ code: "TASK_NOT_FOUND", message: "La tarea solicitada no pudo ser encontrada" } }
       _ ->  on_found.(task)
     end
   end
@@ -120,7 +120,8 @@ defmodule App.ToDoList.Task.Worker do
   def child_spec(name) do
     %{
       id: name,
-      start: { __MODULE__, :start_link, name }
+      start: { __MODULE__, :start_link, name },
+      restart: :transient
     }
   end
 

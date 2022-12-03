@@ -16,14 +16,14 @@ defmodule App.ToDoList.Worker do
   def where_is(list_name) do
     worker = case Registry.lookup(@to_do_list_registry, list_name) do
       [] -> nil
-      todo_lists -> Enum.random(todo_lists)
+      todo_lists -> try_sync_and_get(list_name, todo_lists)
     end
 
     if (worker == nil) do
       nodes = Node.list()
-      reducer = fn node, w ->
+      reducer = fn n, w ->
         if (w == nil) do
-          GenServer.call({__MODULE__, :"#{node}"}, { :where_is, list_name })
+          GenServer.call({__MODULE__, :"#{n}"}, { :get_list, list_name })
         else
           w
         end
@@ -35,15 +35,18 @@ defmodule App.ToDoList.Worker do
   end
 
   def all() do
-    nodes = [ node() | Node.list() ]
+    nodes = Node.list()
     map = fn node ->
-      GenServer.call({__MODULE__, :"#{node}"}, :all)
+      GenServer.call({__MODULE__, :"#{node}"}, :list_all)
     end
-    Enum.flat_map(nodes, map)
+    list_local_workers() ++ Enum.flat_map(nodes, map)
   end
 
   def create(name) do
-    App.ToDoList.Task.Supervisor.start_child(name)
+    case where_is(name) do
+      nil -> App.ToDoList.Task.Supervisor.start_child(name)
+      _ -> { :duplicated_to_do_list, %{ code: "DUPLICATED_LIST", message: "La lista no pudo ser creada debido a que ya existe en el sistema" } }
+    end
   end
 
   def call(name, message) do
@@ -68,16 +71,44 @@ defmodule App.ToDoList.Worker do
   end
 
   @impl true
-  def handle_call({ :where_is, list_name }, _from, state) do
+  def handle_call({ :get_list, list_name }, _from, state) do
     case Registry.lookup(@to_do_list_registry, list_name) do
       [] -> { :reply, nil, state }
-      todo_lists -> { :reply, Enum.random(todo_lists), state }
+      todo_lists -> { :reply, try_sync_and_get(list_name, todo_lists), state }
     end
   end
 
   @impl true
-  def handle_call(:all , _from, state) do
-    { :reply, Registry.select(@to_do_list_registry, [{{:"$1", :"$2", :"$3"}, [], [{{:"$1", :"$2", :"$3"}}]}]), state }
+  def handle_call(:list_all , _from, state) do
+    { :reply, list_local_workers(), state }
+  end
+
+  def sync() do
+    workers = all()
+    IO.inspect(workers)
+    grouped_workers = Enum.group_by(workers, fn { name, _, _ } -> name end, fn { _, pid, date } -> { pid, date } end)
+    Enum.each(grouped_workers, fn { _, list_workers } ->
+      list_workers_count =  Enum.count(list_workers)
+      if (list_workers_count > 1) do
+        sorted_workers = Enum.sort_by(list_workers, fn { _ , date } -> date end, :desc)
+        redundant_workers = Enum.take(sorted_workers, list_workers_count - 1)
+        Enum.each(redundant_workers, fn { redundant_worker_pid, _ } -> App.ToDoList.Task.Supervisor.terminate_child(redundant_worker_pid) end)
+      end
+    end)
+  end
+
+  def try_sync_and_get(list_name, todo_lists) do
+    if (Enum.count(todo_lists) > 1) do
+      sync()
+    end
+    case Registry.lookup(@to_do_list_registry, list_name) do
+      [] ->  nil
+      tl -> Enum.random(tl)
+    end
+  end
+
+  defp list_local_workers() do
+    Registry.select(@to_do_list_registry, [{{:"$1", :"$2", :"$3"}, [], [{{:"$1", :"$2", :"$3"}}]}])
   end
 
   def child_spec() do

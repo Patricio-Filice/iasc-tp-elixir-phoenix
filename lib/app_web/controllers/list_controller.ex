@@ -3,8 +3,7 @@ defmodule AppWeb.ListController do
 
   def create(conn, params) do
     %{ "name" => name } = params
-    App.ToDoList.Worker.create(name)
-    Plug.Conn.send_resp(conn, 204, "")
+    try(conn, fn -> App.ToDoList.Worker.create(name) end, fn _ -> Plug.Conn.send_resp(conn, 204, "") end)
   end
 
   def list(conn, params) do
@@ -29,5 +28,18 @@ defmodule AppWeb.ListController do
     |> Enum.sort_by(& &1.name, sort_direction)
 
     json(conn, result)
+  end
+
+  defp try(conn, action, response) do
+    duplicated_action = fn error ->
+      conn
+      |> Plug.Conn.put_status(400)
+      |> json(error)
+    end
+
+    case action.() do
+      { :duplicated_to_do_list, error } -> duplicated_action.(error)
+      result -> response.(result)
+    end
   end
 end

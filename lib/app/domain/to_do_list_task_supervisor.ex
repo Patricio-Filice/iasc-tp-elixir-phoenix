@@ -29,6 +29,10 @@ defmodule App.ToDoList.Task.Supervisor do
     Horde.DynamicSupervisor.start_child(__MODULE__, toDoListWorkerSpec)
   end
 
+  def terminate_child(task_pid) do
+    Horde.DynamicSupervisor.terminate_child(__MODULE__, task_pid)
+  end
+
   defp members() do
     Enum.map([Node.self() | Node.list()], &{__MODULE__, &1})
   end
