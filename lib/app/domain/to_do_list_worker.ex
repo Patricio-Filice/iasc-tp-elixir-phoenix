@@ -85,7 +85,6 @@ defmodule App.ToDoList.Worker do
 
   def sync() do
     workers = all()
-    IO.inspect(workers)
     grouped_workers = Enum.group_by(workers, fn { name, _, _ } -> name end, fn { _, pid, date } -> { pid, date } end)
     Enum.each(grouped_workers, fn { _, list_workers } ->
       list_workers_count =  Enum.count(list_workers)
